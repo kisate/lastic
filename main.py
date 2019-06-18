@@ -10,7 +10,6 @@ import threading
 import os, glob, pickle
 
 import traceback
-from getkey import getkey, keys
 import serial, time
 
 #TODO:
@@ -26,7 +25,7 @@ lastPos = 0
 cameraId = 1
 
 host = '192.168.1.3'
-port = 51100 # random number
+port = 51004 # random number
 
 drop_off_coords = [
 
