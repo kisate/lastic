@@ -11,7 +11,7 @@ import os, glob, pickle
 
 import traceback
 from getkey import getkey, keys
-from time import sleep
+import serial, time
 
 #TODO:
 # размер экрана
@@ -27,13 +27,39 @@ cameraId = 1
 
 host = '192.168.1.3'
 port = 51100 # random number
-a = False
 
-q = []
+drop_off_coords = [
 
-changed_id = []
-changed_stats = []
-CLIENT_ID = "733b83d64f87370"
+]
+
+
+def send(*args):
+    global conn
+
+    try : 
+        msg = len(args).to_bytes(1, byteorder='big')
+        for a in args:
+            msg += (a).to_bytes(8, byteorder='big', signed = True)
+        print(msg)
+        conn.send(msg)
+
+    except BaseException as e :
+        print (e)
+
+def read():
+    global conn
+
+    message = []
+    part = conn.recv(1)
+    message_size = int.from_bytes(part, byteorder='big')
+
+    for i in range(message_size):
+        part = s.recv(8)
+        message.append(int.from_bytes(part, byteorder='big', signed=True))
+
+    print (message)
+    if len(part) == 0 : return None
+    return message
 
 cv2.namedWindow('image')
 cap = cv2.VideoCapture(cameraId)
@@ -52,21 +78,26 @@ s.bind(('', port))
 s.listen(5)
 
 conn, addr = s.accept()
-
 print(addr)
 
+arduino = serial.Serial('/dev/ttyUSB0', 115200)
+time.sleep(1) 
+
+parts = []
 state = 1
 
 while state == 1:
     try :
-        pos = conn.recv(2)
-        pos = int.from_bytes(pos, 'big')
+        message = read()
+
+        pos = message[0]
+
         _, img = cap.read()
         height, width, _ = img.shape
 
         #data -- вывод нейронки
 
-        parts = []
+        
         boxes, scores, classes, num_classes = data
         
         for index in range(int(num_classes[0])):
@@ -84,3 +115,33 @@ while state == 1:
         cap.release()
         conn.close()
         exit()
+
+num_collected = 0
+num_to_collect = min(5, len(parts))
+while state == 2:
+    part = parts[num_collected]
+    do_coords = drop_off_coords[part['id']]
+    encPos = do_coords #TODO
+    gripperPos = 0
+
+    send(encPos)
+    read()
+
+    arduino.write([gripperPos >> 8])
+    arduino.write([gripperPos & 256])
+    arduino.read()
+    
+    send(do_coords[0])
+    read()
+
+    arduino.write([do_coords[1] >> 8])
+    arduino.write([do_coords[1] & 256])
+    arduino.read()
+
+    num_collected += 1
+    if (num_collected == num_to_collect) : state = 3
+    
+
+    
+    
+

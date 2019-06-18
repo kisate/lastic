@@ -24,42 +24,7 @@ port = 51004 # fig number
 
 moving_motor = LargeMotor(OUTPUT_A)
 
-# code goes here ---------------
-
-# servo = smbus.SMBus(3) # input port 1 
-# servo.write_i2c_block_data(0x01, 0x48, [0xAA]) # xAA - disable 10 second timeout / xFF - no servo control / x00 - 10 second timeout
-
 client = Client(host, port)
-
-# def getServoPos(channel_id):
-#     return servo.read_i2c_block_data(0x01, servoAddresses[channel_id])[0]
-
-# def setServoPos(channel_id, position):
-#     servo.write_i2c_block_data(0x01, servoAddresses[channel_id], [position % 256])
-
-# def rotateServo(channel_id, position, step = 0.02):
-
-#     position %= 256
-
-#     current = getServoPos(channel_id)
-    
-#     print("{} {}".format(current, position))
-    
-#     while (current < position):            
-#         current = min(position, current + 2)
-#         setServoPos(channel_id, current)
-
-#         time.sleep(step)
-
-#     while (current > position):
-#         current = max(position, current - 2)
-#         setServoPos(channel_id, current)
-
-#         time.sleep(step)
-
-# def rotateServoOnDefault() :
-#     rotateServo(lrServo, defaultAngle)
-#     rotateServo(udServo, upAngle)
 
 
 def rideToEnc(enc, percent = 100):
@@ -81,21 +46,10 @@ def rideToEnc(enc, percent = 100):
         moving_motor.stop()
                     
 
-def calibrate():
-    moving_motor.on(SpeedPercent(100))
-    while not touch.is_pressed:
-        time.sleep(0.003)
-    moving_motor.stop()
-
-    moving_motor.position = 0
-    camera_motor.position = 0
-    drone_motor.position = 0
-
 def finish():
     moving_motor.reset()
-       
+    
     client.disconnect()
-    # servo.write_i2c_block_data(0x01, 0x48, [0xFF])
 
 
 class MessageHandler():
@@ -129,6 +83,10 @@ def waitForCommand():
             if (messagehandler.state == 2):
                 message = messagehandler.message
                 print(message)
+
+                pos = message[1]
+                rideToEnc(pos)
+                client.send(1)
                 
                 
         except BaseException as e:
@@ -138,7 +96,6 @@ def waitForCommand():
             break
 
 time.sleep(5)
-calibrate()
 moving_motor.stop()
 
 print("connecting")
